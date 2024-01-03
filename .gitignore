@@ -1,0 +1,6 @@
+# Exclude kube config
+
+*kube.config*
+files/kube.config
+files/binary/oc
+.vscode
