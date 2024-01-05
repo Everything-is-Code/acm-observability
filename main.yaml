@@ -5,6 +5,8 @@
     - access_key: "your_key"
       secret_key: "your_secret"
       oc_cli_url: "url_for_cli download"
+      oc: "./files/binary/oc"
+      thanos_ns: "open-cluster-management-observability"
       thanos_bc: "obc-open-cluster-management-observability-thanos-bc"
   pre_tasks:
 
@@ -55,7 +57,7 @@
     - name: Wait for ArgoCD to finish deploying
       ansible.builtin.shell:
         cmd: |
-          while ! ./files/binary/oc wait pods --all --namespace=openshift-gitops --for=condition=Ready --timeout=600s >/dev/null; do \
+          while ! {{ oc }} wait pods --all --namespace=openshift-gitops --for=condition=Ready --timeout=600s >/dev/null; do \
             sleep 5
           done
       register: argocd_ready
@@ -70,7 +72,7 @@
     - name: Wait for ACM to finish installing
       ansible.builtin.shell:
         cmd: |
-          while ! ./files/binary/oc wait mce multiclusterengine --for=condition=available --timeout=1500s >/dev/null; do \
+          while ! {{ oc }} wait mce multiclusterengine --for=condition=available --timeout=1500s >/dev/null; do \
             sleep 5
           done
       register: acm_ready
@@ -85,7 +87,7 @@
     - name: Wait for ODF object storage bucket to be created
       ansible.builtin.shell:
         cmd: |
-          while ! ./files/binary/oc wait crd objectbuckets.objectbucket.io --for=condition=established --timeout=600s >/dev/null; do \
+          while ! {{ oc }} wait crd objectbuckets.objectbucket.io --for=condition=established --timeout=600s >/dev/null; do \
             sleep 5
           done
       register: objectbucket_ready
@@ -100,7 +102,7 @@
     - name: Wait for thanos object storage
       ansible.builtin.shell:
         cmd: |
-          while ! ./files/binary/oc get objectbucket {{ thanos_bc }} -n open-cluster-management-observability --timeout=600s >/dev/null; do \
+          while ! {{ oc }} wait objectbucket {{ thanos_bc }} -n {{ thanos_ns }} --for=jsonpath='{.status.phase}'=Bound --timeout=600s >/dev/null; do \
             sleep 5
           done
       register: thanos_ready
@@ -110,7 +112,7 @@
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          ./files/binary/oc get objectbucket {{ thanos_bc }} -n open-cluster-management-observability -o json | jq -r '.spec.endpoint.bucketName'
+          {{ oc }} get objectbucket {{ thanos_bc }} -n {{ thanos_ns }} -o json | jq -r '.spec.endpoint.bucketName'
       register: s3_bucket
       changed_when: s3_bucket.rc
 
@@ -118,8 +120,8 @@
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          ./files/binary/oc get objectbucket {{ thanos_bc }} -n open-cluster-management-observability -o json | jq -r '.spec.endpoint.bucketHost'
-        register: s3_endpoint
+          {{ oc }} get objectbucket {{ thanos_bc }} -n {{ thanos_ns }} -o json | jq -r '.spec.endpoint.bucketHost'
+      register: s3_endpoint
       changed_when: s3_endpoint.rc
 
     - name: Create TMP folder
