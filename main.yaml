@@ -51,11 +51,13 @@
         src: argocd/01-argocd-subscription.yaml
         state: present
 
+
     - name: Wait for ArgoCD to finish deploying
-      ansible.builtin.shell: |
-        while ! ./files/binary/oc wait pods --all --namespace=openshift-gitops --for=condition=Ready --timeout=600s >/dev/null; do \
-          sleep 5
-        done
+      ansible.builtin.shell:
+        cmd: |
+          while ! ./files/binary/oc wait pods --all --namespace=openshift-gitops --for=condition=Ready --timeout=600s >/dev/null; do \
+            sleep 5
+          done
       register: argocd_ready
       changed_when: argocd_ready
 
@@ -66,10 +68,11 @@
         state: present
 
     - name: Wait for ACM to finish installing
-      ansible.builtin.shell: |
-        while ! ./files/binary/oc wait mce multiclusterengine --for=condition=available --timeout=1500s >/dev/null; do \
-          sleep 5
-        done
+      ansible.builtin.shell:
+        cmd: |
+          while ! ./files/binary/oc wait mce multiclusterengine --for=condition=available --timeout=1500s >/dev/null; do \
+            sleep 5
+          done
       register: acm_ready
       changed_when: acm_ready
 
@@ -80,10 +83,11 @@
         state: present
 
     - name: Wait for ODF object storage bucket to be created
-      ansible.builtin.shell: |
-        while ! ./files/binary/oc wait crd objectbuckets.objectbucket.io --for=condition=established --timeout=600s >/dev/null; do \
-          sleep 5
-        done
+      ansible.builtin.shell:
+        cmd: |
+          while ! ./files/binary/oc wait crd objectbuckets.objectbucket.io --for=condition=established --timeout=600s >/dev/null; do \
+            sleep 5
+          done
       register: objectbucket_ready
       changed_when: objectbucket_ready
 
@@ -92,6 +96,15 @@
         kubeconfig: config/kube.config
         src: argocd-apps/00_acm-obs.yaml
         state: present
+
+    - name: Wait for thanos object storage
+      ansible.builtin.shell:
+        cmd: |
+          while ! ./files/binary/oc get objectbucket {{ thanos_bc }} -n open-cluster-management-observability --timeout=600s >/dev/null; do \
+            sleep 5
+          done
+      register: thanos_ready
+      changed_when: thanos_ready.rc
 
     - name: Get Values for thanos object storage name
       ansible.builtin.shell:
@@ -106,7 +119,7 @@
         cmd: |
           set -o pipefail
           ./files/binary/oc get objectbucket {{ thanos_bc }} -n open-cluster-management-observability -o json | jq -r '.spec.endpoint.bucketHost'
-      register: s3_endpoint
+        register: s3_endpoint
       changed_when: s3_endpoint.rc
 
     - name: Create TMP folder
