@@ -52,12 +52,10 @@
         state: present
 
     - name: Wait for ArgoCD to finish deploying
-      ansible.builtin.command: "./files/binary/oc wait pods --all --namespace=openshift-gitops --for=condition=Ready --timeout=600s"
-      register: argocd_ready
-      changed_when: argocd_ready
-
-    - name: Check that ArgoCD resources are created
-      ansible.builtin.command: "./files/binary/oc wait crd applications.argoproj.io --for=condition=established --timeout=600s"
+      ansible.builtin.shell: |
+        while ! ./files/binary/oc wait pods --all --namespace=openshift-gitops --for=condition=Ready --timeout=600s >/dev/null; do \
+          sleep 5
+        done
       register: argocd_ready
       changed_when: argocd_ready
 
@@ -68,7 +66,10 @@
         state: present
 
     - name: Wait for ACM to finish installing
-      ansible.builtin.command: "./files/binary/oc wait mce multiclusterengine --for=condition=available --timeout=1500s"
+      ansible.builtin.shell: |
+        while ! ./files/binary/oc wait mce multiclusterengine --for=condition=available --timeout=1500s >/dev/null; do \
+          sleep 5
+        done
       register: acm_ready
       changed_when: acm_ready
 
@@ -79,7 +80,10 @@
         state: present
 
     - name: Wait for ODF object storage bucket to be created
-      ansible.builtin.command: "./files/binary/oc wait crd objectbuckets.objectbucket.io --for=condition=established --timeout=600s"
+      ansible.builtin.shell: |
+        while ! ./files/binary/oc wait crd objectbuckets.objectbucket.io --for=condition=established --timeout=600s >/dev/null; do \
+          sleep 5
+        done
       register: objectbucket_ready
       changed_when: objectbucket_ready
 
